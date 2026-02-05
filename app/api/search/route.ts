@@ -75,11 +75,19 @@ export async function POST(request: NextRequest) {
       try {
         let pageToken: string | undefined = undefined;
         let keywordCandidates = 0;
+        let firstQuery: string | undefined = undefined;
 
         // Keep fetching pages until we have enough total filtered candidates
         // or there are no more pages
         while (candidatesMap.size < limit) {
-          const response = await searchText(keyword, locationBias, pageToken);
+          const response = await searchText(keyword, locationBias, pageToken, firstQuery);
+          
+          // Save the first query for pagination consistency
+          if (!firstQuery && !pageToken) {
+            firstQuery = locationBias?.locationText 
+              ? `${keyword} in ${locationBias.locationText}` 
+              : keyword;
+          }
 
           if (response.places && response.places.length > 0) {
             for (const place of response.places) {

@@ -141,26 +141,25 @@ async function makeRequest<T>(
 export async function searchText(
   textQuery: string,
   locationBias?: { locationText?: string; latLng?: Location },
-  pageToken?: string
+  pageToken?: string,
+  originalTextQuery?: string
 ): Promise<TextSearchResponse> {
-  const body: any = {
-    textQuery,
-  };
+  const body: any = {};
 
   if (pageToken) {
+    // For pagination, use the exact same textQuery as the original request
     body.pageToken = pageToken;
+    body.textQuery = originalTextQuery || textQuery;
   } else {
-    // Location bias only applies to initial request, not paginated ones
+    // First request - build the text query with location if needed
     if (locationBias?.locationText) {
-      body.locationBias = {
-        circle: {
-          center: {
-            addressLines: [locationBias.locationText],
-          },
-          radius: 50000, // 50km radius
-        },
-      };
-    } else if (locationBias?.latLng) {
+      // Include location directly in the text query for better results
+      body.textQuery = `${textQuery} in ${locationBias.locationText}`;
+    } else {
+      body.textQuery = textQuery;
+    }
+    
+    if (locationBias?.latLng) {
       body.locationBias = {
         circle: {
           center: {
