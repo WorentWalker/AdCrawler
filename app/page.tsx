@@ -71,6 +71,11 @@ export default function Home() {
         totalFetched: data.totalFetched,
         filtered: data.filtered,
       });
+      
+      // Show demo mode notification
+      if (data.demo) {
+        console.log("🎭 Running in DEMO mode with mock data");
+      }
     } catch (err: any) {
       setError(err.message || "An error occurred");
     } finally {

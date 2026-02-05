@@ -7,6 +7,7 @@ import {
   buildGoogleMapsUrl,
 } from "@/lib/googlePlaces";
 import { PlaceCandidate, PlaceDetails } from "@/types/places";
+import { generateMockPlaces, DEMO_MODE } from "@/lib/mockData";
 
 // Request validation schema
 const searchRequestSchema = z.object({
@@ -31,6 +32,24 @@ export async function POST(request: NextRequest) {
     const validatedData = searchRequestSchema.parse(body);
 
     const { keywords, locationText, latLng, limit, threshold } = validatedData;
+
+    // DEMO MODE: Return mock data without API calls
+    if (DEMO_MODE) {
+      console.log("🎭 DEMO MODE: Returning mock data");
+      const mockPlaces = generateMockPlaces(
+        keywords[0] || "place",
+        locationText || "Unknown Location",
+        threshold,
+        limit
+      );
+      
+      return NextResponse.json({
+        places: mockPlaces,
+        totalFetched: mockPlaces.length * 3, // Simulate more were fetched
+        filtered: mockPlaces.length,
+        demo: true,
+      });
+    }
 
     // Build location bias
     const locationBias = latLng
