@@ -198,15 +198,15 @@ export default function Home() {
               >
                 Max Results
               </label>
-              <input
-                id="limit"
-                type="number"
-                min="1"
-                max="100"
-                value={limit}
-                onChange={(e) => setLimit(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+                <input
+                  id="limit"
+                  type="number"
+                  min="1"
+                  max="200"
+                  value={limit}
+                  onChange={(e) => setLimit(parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
             </div>
 
             {/* Rating Threshold */}

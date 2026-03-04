@@ -19,7 +19,7 @@ const searchRequestSchema = z.object({
       lng: z.number().min(-180).max(180),
     })
     .optional(),
-  limit: z.number().int().min(1).max(100).default(30),
+  limit: z.number().int().min(1).max(200).default(30),
   threshold: z.number().min(0).max(5).default(3.0),
 });
 
