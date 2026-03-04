@@ -142,14 +142,16 @@ export async function searchText(
   textQuery: string,
   locationBias?: { locationText?: string; latLng?: Location },
   pageToken?: string,
-  originalTextQuery?: string
+  originalTextQuery?: string,
+  includedType?: string
 ): Promise<TextSearchResponse> {
   const body: any = {};
 
   if (pageToken) {
-    // For pagination, use the exact same textQuery as the original request
+    // For pagination, use the exact same parameters as the original request
     body.pageToken = pageToken;
     body.textQuery = originalTextQuery || textQuery;
+    if (includedType) body.includedType = includedType;
   } else {
     // First request - build the text query with location if needed
     if (locationBias?.locationText) {
@@ -169,6 +171,10 @@ export async function searchText(
           radius: 50000,
         },
       };
+    }
+
+    if (includedType) {
+      body.includedType = includedType;
     }
   }
 
