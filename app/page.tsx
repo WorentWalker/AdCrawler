@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { PlaceDetails } from "@/types/places";
 import { generateCSV, downloadCSV } from "@/lib/csv";
+import { PLACE_TYPES } from "@/lib/placeTypes";
 
 export default function Home() {
   const [keywords, setKeywords] = useState("");
+  const [categories, setCategories] = useState<string[]>([]);
   const [location, setLocation] = useState("");
   const [limit, setLimit] = useState(30);
   const [threshold, setThreshold] = useState(3.0);
@@ -19,6 +21,7 @@ export default function Home() {
   } | null>(null);
 
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [photoSlideIndex, setPhotoSlideIndex] = useState<Record<string, number>>({});
   const [sortBy, setSortBy] = useState<"rating" | "ratingCount">("rating");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
@@ -36,13 +39,14 @@ export default function Home() {
         .map((k) => k.trim())
         .filter((k) => k.length > 0);
 
-      if (keywordList.length === 0) {
-        throw new Error("Please enter at least one keyword");
+      if (keywordList.length === 0 && categories.length === 0) {
+        throw new Error("Please enter at least one keyword or select a category");
       }
 
       // Build request payload
       const payload: any = {
         keywords: keywordList,
+        categories,
         limit,
         threshold,
       };
@@ -85,6 +89,7 @@ export default function Home() {
 
   const handleReset = () => {
     setKeywords("");
+    setCategories([]);
     setLocation("");
     setLimit(30);
     setThreshold(3.0);
@@ -92,6 +97,12 @@ export default function Home() {
     setStats(null);
     setError(null);
     setExpandedRow(null);
+  };
+
+  const toggleCategory = (value: string) => {
+    setCategories((prev) =>
+      prev.includes(value) ? prev.filter((c) => c !== value) : [...prev, value]
+    );
   };
 
   const handleExportCSV = () => {
@@ -128,7 +139,13 @@ export default function Home() {
 
   const toggleExpand = (placeId: string) => {
     setExpandedRow(expandedRow === placeId ? null : placeId);
+    if (expandedRow !== placeId) {
+      setPhotoSlideIndex((prev) => ({ ...prev, [placeId]: 0 }));
+    }
   };
+
+  const getPhotoUrl = (photoName: string, maxWidth = 800) =>
+    `/api/places-photo?name=${encodeURIComponent(photoName)}&maxWidth=${maxWidth}`;
 
   const getGoogleMapsUrl = (place: PlaceDetails) => {
     return (
@@ -139,7 +156,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1400px] mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
@@ -170,6 +187,36 @@ export default function Home() {
                 placeholder="e.g., restaurant, coffee shop, hotel"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+
+            {/* Categories */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Categories (Google Maps place types)
+              </label>
+              <div className="border border-gray-300 rounded-md p-3 max-h-48 overflow-y-auto bg-gray-50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {PLACE_TYPES.map(({ value, label }) => (
+                    <label
+                      key={value}
+                      className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 rounded px-2 py-1"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={categories.includes(value)}
+                        onChange={() => toggleCategory(value)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              {categories.length > 0 && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Selected: {categories.join(", ")}
+                </p>
+              )}
             </div>
 
             {/* Location Text */}
@@ -414,7 +461,7 @@ export default function Home() {
                       {/* Expanded Details Row */}
                       {expandedRow === place.id && (
                         <tr>
-                          <td colSpan={8} className="px-4 py-4 bg-gray-50">
+                          <td colSpan={9} className="px-4 py-4 bg-gray-50">
                             <div className="space-y-4">
                               <div>
                                 <h4 className="text-sm font-semibold text-gray-900 mb-2">
@@ -489,23 +536,96 @@ export default function Home() {
                                 </div>
                               )}
 
-                              {/* Photos */}
+                              {/* Photos Slider - 4 per page */}
                               {place.photos && place.photos.length > 0 && (
                                 <div>
                                   <h4 className="text-sm font-semibold text-gray-900 mb-2">
                                     Photos ({place.photos.length})
                                   </h4>
-                                  <div className="text-sm text-gray-600">
-                                    {place.photos.slice(0, 5).map((photo, idx) => (
-                                      <div key={idx} className="mb-1">
-                                        {photo.name} ({photo.widthPx}x
-                                        {photo.heightPx}px)
-                                      </div>
-                                    ))}
-                                    {place.photos.length > 5 && (
-                                      <p className="text-gray-500 italic">
-                                        ... and {place.photos.length - 5} more
-                                      </p>
+                                  <div className="relative">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                      {place.photos
+                                        .slice(
+                                          ((photoSlideIndex[place.id] ?? 0) * 4),
+                                          ((photoSlideIndex[place.id] ?? 0) * 4) + 4
+                                        )
+                                        .map((photo, idx) => (
+                                          <div
+                                            key={idx}
+                                            className="aspect-video bg-gray-200 rounded-lg overflow-hidden relative"
+                                          >
+                                            <img
+                                              src={getPhotoUrl(photo.name, 400)}
+                                              alt={`Photo ${((photoSlideIndex[place.id] ?? 0) * 4) + idx + 1}`}
+                                              className="w-full h-full object-cover relative z-10"
+                                              onError={(e) => {
+                                                const el = e.target as HTMLImageElement;
+                                                el.style.display = "none";
+                                                el.nextElementSibling?.classList.remove("hidden");
+                                              }}
+                                            />
+                                            <div className="hidden absolute inset-0 z-0 flex items-center justify-center bg-gray-200 text-gray-500 text-xs">
+                                              Photo unavailable
+                                            </div>
+                                          </div>
+                                        ))}
+                                    </div>
+                                    {place.photos.length > 4 && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setPhotoSlideIndex((prev) => ({
+                                              ...prev,
+                                              [place.id]: Math.max(
+                                                0,
+                                                (prev[place.id] ?? 0) - 1
+                                              ),
+                                            }))
+                                          }
+                                          className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center hover:bg-white text-gray-700 disabled:opacity-50"
+                                          disabled={(photoSlideIndex[place.id] ?? 0) === 0}
+                                        >
+                                          ‹
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setPhotoSlideIndex((prev) => ({
+                                              ...prev,
+                                              [place.id]: Math.min(
+                                                Math.ceil((place.photos?.length ?? 0) / 4) - 1,
+                                                (prev[place.id] ?? 0) + 1
+                                              ),
+                                            }))
+                                          }
+                                          className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center hover:bg-white text-gray-700 disabled:opacity-50"
+                                          disabled={(photoSlideIndex[place.id] ?? 0) >= Math.ceil((place.photos?.length ?? 0) / 4) - 1}
+                                        >
+                                          ›
+                                        </button>
+                                        <div className="flex justify-center gap-1 mt-2">
+                                          {Array.from({
+                                            length: Math.ceil((place.photos?.length ?? 0) / 4),
+                                          }).map((_, pageIdx) => (
+                                            <button
+                                              key={pageIdx}
+                                              type="button"
+                                              onClick={() =>
+                                                setPhotoSlideIndex((prev) => ({
+                                                  ...prev,
+                                                  [place.id]: pageIdx,
+                                                }))
+                                              }
+                                              className={`w-2 h-2 rounded-full transition-colors ${
+                                                (photoSlideIndex[place.id] ?? 0) === pageIdx
+                                                  ? "bg-blue-600"
+                                                  : "bg-gray-300 hover:bg-gray-400"
+                                              }`}
+                                            />
+                                          ))}
+                                        </div>
+                                      </>
                                     )}
                                   </div>
                                 </div>
@@ -517,37 +637,31 @@ export default function Home() {
                                   <h4 className="text-sm font-semibold text-gray-900 mb-2">
                                     Reviews ({place.reviews.length})
                                   </h4>
-                                  <div className="space-y-3">
-                                    {place.reviews.slice(0, 3).map((review, idx) => (
+                                  <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
+                                    {place.reviews.map((review, idx) => (
                                       <div
                                         key={idx}
-                                        className="border-l-2 border-gray-300 pl-3"
+                                        className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
                                       >
-                                        <div className="flex items-center gap-2 mb-1">
+                                        <div className="flex flex-wrap items-center gap-2 mb-2">
                                           <span className="text-sm font-medium text-gray-900">
                                             {review.authorAttribution
                                               ?.displayName || "Anonymous"}
                                           </span>
+                                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            ★ {review.rating}/5
+                                          </span>
                                           <span className="text-xs text-gray-500">
                                             {review.relativePublishTimeDescription}
                                           </span>
-                                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                                            {review.rating}/5
-                                          </span>
                                         </div>
-                                        {review.text && (
-                                          <p className="text-sm text-gray-600">
-                                            {review.text.text}
+                                        {(review.text?.text || review.originalText?.text) && (
+                                          <p className="text-sm text-gray-600 leading-relaxed">
+                                            {review.text?.text || review.originalText?.text}
                                           </p>
                                         )}
                                       </div>
                                     ))}
-                                    {place.reviews.length > 3 && (
-                                      <p className="text-sm text-gray-500 italic">
-                                        ... and {place.reviews.length - 3} more
-                                        reviews
-                                      </p>
-                                    )}
                                   </div>
                                 </div>
                               )}

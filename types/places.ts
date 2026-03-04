@@ -123,6 +123,7 @@ export interface TextSearchResponse {
 // Search request payload
 export interface SearchRequest {
   keywords: string[];
+  categories?: string[];
   locationText?: string;
   latLng?: {
     lat: number;
