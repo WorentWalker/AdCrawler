@@ -10,18 +10,24 @@ import { PlaceCandidate, PlaceDetails } from "@/types/places";
 import { generateMockPlaces, DEMO_MODE } from "@/lib/mockData";
 
 // Request validation schema
-const searchRequestSchema = z.object({
-  keywords: z.array(z.string().min(1)).min(1, "At least one keyword required"),
-  locationText: z.string().optional(),
-  latLng: z
-    .object({
-      lat: z.number().min(-90).max(90),
-      lng: z.number().min(-180).max(180),
-    })
-    .optional(),
-  limit: z.number().int().min(1).max(200).default(30),
-  threshold: z.number().min(0).max(5).default(3.0),
-});
+const searchRequestSchema = z
+  .object({
+    keywords: z.array(z.string().min(1)).default([]),
+    categories: z.array(z.string().min(1)).default([]),
+    locationText: z.string().optional(),
+    latLng: z
+      .object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+      })
+      .optional(),
+    limit: z.number().int().min(1).max(200).default(30),
+    threshold: z.number().min(0).max(5).default(3.0),
+  })
+  .refine(
+    (data) => data.keywords.length > 0 || data.categories.length > 0,
+    { message: "At least one keyword or category required", path: ["keywords"] }
+  );
 
 type SearchRequest = z.infer<typeof searchRequestSchema>;
 
@@ -31,13 +37,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = searchRequestSchema.parse(body);
 
-    const { keywords, locationText, latLng, limit, threshold } = validatedData;
+    const { keywords, categories, locationText, latLng, limit, threshold } =
+      validatedData;
 
     // DEMO MODE: Return mock data without API calls
     if (DEMO_MODE) {
       console.log("🎭 DEMO MODE: Returning mock data");
       const mockPlaces = generateMockPlaces(
-        keywords[0] || "place",
+        keywords[0] || categories[0] || "place",
         locationText || "Unknown Location",
         threshold,
         limit
@@ -59,40 +66,54 @@ export async function POST(request: NextRequest) {
       : undefined;
 
     console.log(
-      `Starting search with ${keywords.length} keywords, threshold: ${threshold}, limit: ${limit}`
+      `Starting search with ${keywords.length} keywords, ${categories.length} categories, threshold: ${threshold}, limit: ${limit}`
     );
 
-    // Step 1: Collect candidates from Text Search for all keywords
+    // Build search terms: keywords + categories (each category uses includedType)
+    type SearchTerm = { query: string; includedType?: string };
+    const searchTerms: SearchTerm[] = [
+      ...keywords.map((q) => ({ query: q, includedType: undefined })),
+      ...categories.map((cat) => ({ query: cat, includedType: cat })),
+    ];
+
+    // Step 1: Collect candidates from Text Search for all keywords and categories
     const candidatesMap = new Map<string, PlaceCandidate>();
     let totalFetched = 0;
 
     // Use concurrency limit for API requests
     const limitConcurrency = pLimit(3);
 
-    for (const keyword of keywords) {
-      console.log(`Searching for keyword: "${keyword}"`);
-      
+    for (const { query, includedType } of searchTerms) {
+      const label = includedType ? `category "${includedType}"` : `keyword "${query}"`;
+      console.log(`Searching for ${label}`);
+
       try {
         let pageToken: string | undefined = undefined;
-        let keywordCandidates = 0;
+        let termCandidates = 0;
         let firstQuery: string | undefined = undefined;
 
         // Keep fetching pages until we have enough total filtered candidates
         // or there are no more pages
         while (candidatesMap.size < limit) {
-          const response = await searchText(keyword, locationBias, pageToken, firstQuery);
-          
+          const response = await searchText(
+            query,
+            locationBias,
+            pageToken,
+            firstQuery,
+            includedType
+          );
+
           // Save the first query for pagination consistency
           if (!firstQuery && !pageToken) {
-            firstQuery = locationBias?.locationText 
-              ? `${keyword} in ${locationBias.locationText}` 
-              : keyword;
+            firstQuery = locationBias?.locationText
+              ? `${query} in ${locationBias.locationText}`
+              : query;
           }
 
           if (response.places && response.places.length > 0) {
             for (const place of response.places) {
               totalFetched++;
-              keywordCandidates++;
+              termCandidates++;
 
               // Deduplicate by place ID
               if (!candidatesMap.has(place.id)) {
@@ -120,7 +141,7 @@ export async function POST(request: NextRequest) {
           if (response.nextPageToken && candidatesMap.size < limit) {
             pageToken = response.nextPageToken;
             console.log(
-              `Fetching next page for "${keyword}" (collected ${candidatesMap.size}/${limit})`
+              `Fetching next page for ${label} (collected ${candidatesMap.size}/${limit})`
             );
           } else {
             // No more pages or we have enough results
@@ -129,17 +150,17 @@ export async function POST(request: NextRequest) {
         }
 
         console.log(
-          `Keyword "${keyword}": fetched ${keywordCandidates} places, ${candidatesMap.size} total filtered`
+          `${label}: fetched ${termCandidates} places, ${candidatesMap.size} total filtered`
         );
 
-        // Stop processing keywords if we've reached the limit
+        // Stop processing if we've reached the limit
         if (candidatesMap.size >= limit) {
           console.log(`Reached limit of ${limit} filtered results`);
           break;
         }
       } catch (error: any) {
-        console.error(`Error searching for keyword "${keyword}":`, error.message);
-        // Continue with next keyword instead of failing entirely
+        console.error(`Error searching for ${label}:`, error.message);
+        // Continue with next term instead of failing entirely
       }
     }
 
@@ -197,9 +218,11 @@ export async function POST(request: NextRequest) {
     console.error("Search API error:", error);
 
     if (error instanceof z.ZodError) {
+      const firstError = error.errors[0];
+      const message = firstError?.message || "Validation error";
       return NextResponse.json(
         {
-          error: "Validation error",
+          error: message,
           details: error.errors,
         },
         { status: 400 }
