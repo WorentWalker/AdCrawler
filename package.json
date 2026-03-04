@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@next/swc-darwin-arm64": "15.5.11",
     "next": "^15.5.11",
     "p-limit": "^4.0.0",
     "react": "^18.3.1",
