@@ -3,6 +3,7 @@
  * @see https://developers.google.com/maps/documentation/places/web-service/place-types
  */
 export const PLACE_TYPES = [
+  // Food & Drink
   { value: "restaurant", label: "Restaurant" },
   { value: "cafe", label: "Café" },
   { value: "bar", label: "Bar" },
@@ -10,7 +11,9 @@ export const PLACE_TYPES = [
   { value: "meal_delivery", label: "Meal Delivery" },
   { value: "meal_takeaway", label: "Meal Takeaway" },
   { value: "food", label: "Food" },
+  // Lodging
   { value: "lodging", label: "Hotel / Lodging" },
+  // Shopping
   { value: "shopping_mall", label: "Shopping Mall" },
   { value: "supermarket", label: "Supermarket" },
   { value: "convenience_store", label: "Convenience Store" },
@@ -23,26 +26,22 @@ export const PLACE_TYPES = [
   { value: "book_store", label: "Book Store" },
   { value: "pet_store", label: "Pet Store" },
   { value: "store", label: "Store" },
+  { value: "hardware_store", label: "Hardware Store" },
+  { value: "liquor_store", label: "Liquor Store" },
+  // Beauty & Wellness
   { value: "beauty_salon", label: "Beauty Salon" },
-  { value: "hair_care", label: "Hair Care" },
+  { value: "hair_care", label: "Hair Salon / Hair Care" },
   { value: "spa", label: "Spa" },
   { value: "gym", label: "Gym" },
+  // Medical & Health
   { value: "physiotherapist", label: "Physiotherapist" },
   { value: "dentist", label: "Dentist" },
   { value: "doctor", label: "Doctor" },
   { value: "hospital", label: "Hospital" },
   { value: "pharmacy", label: "Pharmacy" },
   { value: "veterinary_care", label: "Veterinary Care" },
-  { value: "lawyer", label: "Lawyer" },
-  { value: "accounting", label: "Accounting" },
-  { value: "insurance_agency", label: "Insurance Agency" },
-  { value: "real_estate_agency", label: "Real Estate Agency" },
-  { value: "travel_agency", label: "Travel Agency" },
-  { value: "car_rental", label: "Car Rental" },
-  { value: "car_dealer", label: "Car Dealer" },
-  { value: "car_repair", label: "Car Repair" },
-  { value: "gas_station", label: "Gas Station" },
-  { value: "parking", label: "Parking" },
+  { value: "chiropractor", label: "Chiropractor" },
+  // Handyman & Home Services
   { value: "electrician", label: "Electrician" },
   { value: "plumber", label: "Plumber" },
   { value: "locksmith", label: "Locksmith" },
@@ -50,6 +49,18 @@ export const PLACE_TYPES = [
   { value: "roofing_contractor", label: "Roofing Contractor" },
   { value: "general_contractor", label: "General Contractor" },
   { value: "painter", label: "Painter" },
+  // Professional Services
+  { value: "lawyer", label: "Lawyer" },
+  { value: "accounting", label: "Accounting" },
+  { value: "insurance_agency", label: "Insurance Agency" },
+  { value: "real_estate_agency", label: "Real Estate Agency" },
+  { value: "travel_agency", label: "Travel Agency" },
+  // Automotive
+  { value: "car_rental", label: "Car Rental" },
+  { value: "car_dealer", label: "Car Dealer" },
+  { value: "car_repair", label: "Car Repair" },
+  { value: "gas_station", label: "Gas Station" },
+  { value: "parking", label: "Parking" },
   { value: "school", label: "School" },
   { value: "university", label: "University" },
   { value: "library", label: "Library" },
@@ -81,8 +92,6 @@ export const PLACE_TYPES = [
   { value: "florist", label: "Florist" },
   { value: "funeral_home", label: "Funeral Home" },
   { value: "cemetery", label: "Cemetery" },
-  { value: "liquor_store", label: "Liquor Store" },
-  { value: "hardware_store", label: "Hardware Store" },
 ] as const;
 
 export type PlaceTypeValue = (typeof PLACE_TYPES)[number]["value"];
